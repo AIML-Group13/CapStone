@@ -1,4 +1,5 @@
-# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+92% of storage used … If you run out, you can't create, edit and upload files. Get 30 GB of storage for ₹59.00 ₹15.00/month for 3 months.
+# Ultralytics YOLOv5 🚀, AGPL-3.0 license
 """
 Run YOLOv5 detection inference on images, videos, directories, globs, YouTube, webcam, streams, etc.
 
@@ -216,13 +217,12 @@ def run(
         csv_path = save_dir / "predictions.csv"
 
         # Create or append to the CSV file
-        def write_to_csv(image_name, prediction, confidence):
+        def write_to_csv(image_name, prediction, confidence, frame):
             """Writes prediction data for an image to a CSV file, appending if the file exists."""
-            data = {"Image Name": image_name, "Prediction": prediction, "Confidence": confidence}
-            file_exists = os.path.isfile(csv_path)
+            data = {"Image Name": image_name, "Prediction": prediction, "Confidence": confidence, "Frame" : frame}
             with open(csv_path, mode="a", newline="") as f:
                 writer = csv.DictWriter(f, fieldnames=data.keys())
-                if not file_exists:
+                if not csv_path.is_file():
                     writer.writeheader()
                 writer.writerow(data)
 
@@ -259,7 +259,7 @@ def run(
                     confidence_str = f"{confidence:.2f}"
 
                     if save_csv:
-                        write_to_csv(p.name, label, confidence_str)
+                        write_to_csv(p.name, label, confidence_str, frame)
 
                     if save_txt:  # Write to file
                         if save_format == 0:
@@ -309,7 +309,7 @@ def run(
                     vid_writer[i].write(im0)
 
         # Print time (inference-only)
-        LOGGER.info(f"{s}{'' if len(det) else '(no detections), '}{dt[1].dt * 1e3:.1f}ms")
+        LOGGER.info(f"{s}{'' if len(det) else '(no detections), '}{dt[1].dt * 1E3:.1f}ms")
 
     # Print results
     t = tuple(x.t / seen * 1e3 for x in dt)  # speeds per image
