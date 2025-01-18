@@ -1,4 +1,11 @@
-def vehicle_count(csv_path, input_type):
+def vehicle_count(img_path):
+    !python ../yolov5/detect.py --weights ../best.pt --img 640 --conf 0.4 --save-csv --source "{img_path}"
+    latest_exp = sorted(Path('/content/yolov5/runs/detect').glob('exp*'), key=os.path.getmtime)[-1]
+    filenames = [f for f in os.listdir(latest_exp) if f.endswith('.csv')]
+    count = num_vehicles(f"{latest_exp}/{filenames[0]}",'Image')
+    return count
+
+def num_vehicles(csv_path, input_type):
   if input_type=='Image':
     df = pd.read_csv(csv_path, header=None)
     df.columns=['File','Vehicle_Type', 'Confidence', 'Frame']
