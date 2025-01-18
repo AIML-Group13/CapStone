@@ -1,8 +1,8 @@
 # CapStone
 
-Clone the repository:
+1. Clone the repository:
     ```sh
-    git clone repo
+    git clone https://github.com/AIML-Group13/CapStone.git
     cd CapStone
     ```
 
