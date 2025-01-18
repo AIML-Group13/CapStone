@@ -31,7 +31,7 @@ def ambulance_detection(img_path):
   os.system(f"python ../yolov5/detect.py --weights ../er_best.pt --img 640 --conf 0.4 --save-csv --source {img_path}")
   latest_exp = sorted(Path('../yolov5/runs/detect').glob('exp*'), key=os.path.getmtime)[-1]
   filenames = [f for f in os.listdir(latest_exp) if f.endswith(('.jpeg', '.jpg'))][0]
-  print(filenames)
+  #print(filenames)
   return f"{latest_exp}/{filenames}"
 
 
