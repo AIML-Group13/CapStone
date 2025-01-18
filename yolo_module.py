@@ -19,7 +19,7 @@ def vehicle_count(csv_path, input_type):
     return df
 
 def ambulance_detection(img_path):
-    !python ../yolov5/detect.py --weights ../best.pt --img 640 --conf 0.4 --save-csv --source "{img_path}"
+    !python ../yolov5/detect.py --weights ../er_best.pt --img 640 --conf 0.4 --save-csv --source "{img_path}"
     latest_exp = sorted(Path('../yolov5/runs/detect').glob('exp*'), key=os.path.getmtime)[-1]
     filenames = [f for f in os.listdir(latest_exp) if f.endswith(('.jpeg', '.jpg'))][0]
     print(filenames)
