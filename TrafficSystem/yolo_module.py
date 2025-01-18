@@ -44,7 +44,7 @@ def detect_vehicles_and_ambulance(image_path):
     vehicle_count = num_vehicles(image_path)
     ambulance_detected = ambulance_detection(image_path)
     return vehicle_count, ambulance_detected
-
+  
 if __name__ == "__main__":
     print(detect_vehicles_and_ambulance("./uploads/signal_1_20250118_040041.jpg"))
 #     print(detect_vehicles_and_ambulance("test2.jpg"))
