@@ -1,5 +1,5 @@
 // Configuration
-const API_URL = 'http://localhost:8051';
+const API_URL = 'http://localhost:8000';
 const SIGNALS = [
     { id: 1, name: 'North Signal' },
     { id: 2, name: 'South Signal' },
@@ -7,17 +7,46 @@ const SIGNALS = [
     { id: 4, name: 'West Signal' }
 ];
 
-// State management
-let isSimulationRunning = false;
-let currentSignalIndex = 0;
-let simulationInterval;
-let currentTimer;
+function updateSignalDisplays() {
+    controller.signals.forEach((data, id) => {
+        updateSignalUI(id, data);
+    });
+}
 
+function updateTrafficLights(card, status) {
+    const lights = card.querySelectorAll('.light');
+    lights.forEach(light => light.classList.remove('active'));
+
+    if (status === 'Green') {
+        card.querySelector('.light.green').classList.add('active');
+    } else if (status === 'Yellow') {
+        card.querySelector('.light.yellow').classList.add('active');
+    } else if (status === 'Red') {
+        card.querySelector('.light.red').classList.add('active');
+    }
+}
+
+
+// Simulation Control
+function toggleSimulation() {
+    const startButton = document.getElementById('startSimulation');
+    isSimulationRunning = !isSimulationRunning;
+    
+    if (isSimulationRunning) {
+        startButton.textContent = 'Stop Simulation';
+        startSimulation();
+    } else {
+        startButton.textContent = 'Start Simulation';
+        stopSimulation();
+    }
+}
+// State management
 class SignalController {
     constructor() {
         this.signals = new Map();
-        this.totalTime = 120; // Default total cycle time
+        this.totalTime = 120;
         this.isRunning = false;
+        this.emergencyMode = false;
     }
 
     updateSignal(id, data) {
@@ -31,22 +60,22 @@ class SignalController {
         return this.signals.get(id);
     }
 
-    getTotalVehicles() {
-        let total = 0;
+    hasAmbulance() {
+        let hasEmergency = false;
         this.signals.forEach(signal => {
-            total += signal.vehicleCount || 0;
+            if (signal.ambulanceDetected) hasEmergency = true;
         });
-        return total;
+        return hasEmergency;
     }
 }
 
 const controller = new SignalController();
+let isSimulationRunning = false;
+let currentSignalIndex = 0;
+let simulationInterval;
+let currentTimer;
 
-// DOM Element References
-document.addEventListener('DOMContentLoaded', () => {
-    initializeApp();
-});
-
+// Initialize application
 function initializeApp() {
     createSignalCards();
     setupEventListeners();
@@ -71,7 +100,8 @@ function createSignalCards() {
         controller.updateSignal(signal.id, {
             vehicleCount: 0,
             timing: 0,
-            status: 'Waiting'
+            status: 'Waiting',
+            ambulanceDetected: false
         });
         
         signalGrid.appendChild(card);
@@ -89,7 +119,6 @@ function setupEventListeners() {
         updateTimings();
     });
 }
-
 // API Calls
 async function fetchInitialData() {
     try {
@@ -106,7 +135,7 @@ async function fetchInitialData() {
         showError('Failed to fetch signal data');
     }
 }
-
+// API Calls
 async function handleImageUpload(event, signalId) {
     const file = event.target.files[0];
     if (!file) return;
@@ -115,7 +144,7 @@ async function handleImageUpload(event, signalId) {
     formData.append('file', file);
 
     try {
-        const response = await fetch(`${API_URL}/upload/${signalId}`, {
+        const response = await fetch(`${API_URL}/upload-image/${signalId}`, {
             method: 'POST',
             body: formData
         });
@@ -124,14 +153,22 @@ async function handleImageUpload(event, signalId) {
         
         updateSignalUI(signalId, {
             vehicleCount: data.vehicle_count,
-            image: URL.createObjectURL(file)
+            ambulanceDetected: data.ambulance_detected,
+            // image: URL.createObjectURL(file)
+            image: data.image_url
         });
         
         controller.updateSignal(signalId, {
-            vehicleCount: data.vehicle_count
+            vehicleCount: data.vehicle_count,
+            ambulanceDetected: data.ambulance_detected
         });
         
         await updateTimings();
+        
+        // If ambulance detected, show alert
+        if (data.ambulance_detected) {
+            showEmergencyAlert(signalId);
+        }
     } catch (error) {
         console.error('Error uploading image:', error);
         showError('Failed to upload image');
@@ -142,11 +179,12 @@ async function updateTimings() {
     const timings = Array.from(controller.signals.entries()).map(([id, data]) => ({
         signal_id: id,
         vehicle_count: data.vehicleCount,
-        timing: calculateTiming(data.vehicleCount, controller.getTotalVehicles(), controller.totalTime)
+        ambulance_detected: data.ambulanceDetected,
+        timing: data.timing // Will be calculated on backend
     }));
 
     try {
-        await fetch(`${API_URL}/update-timings`, {
+        const response = await fetch(`${API_URL}/update-timings`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -157,13 +195,11 @@ async function updateTimings() {
             })
         });
         
-        timings.forEach(timing => {
-            controller.updateSignal(timing.signal_id, {
-                timing: timing.timing
-            });
-        });
+        const data = await response.json();
+        controller.emergencyMode = data.ambulance_priority;
         
-        updateSignalDisplays();
+        // Refresh display
+        await fetchInitialData();
     } catch (error) {
         console.error('Error updating timings:', error);
         showError('Failed to update signal timings');
@@ -195,64 +231,44 @@ function updateSignalUI(signalId, data) {
         card.querySelector('.signal-status').textContent = data.status;
     }
 
+    if (data.ambulanceDetected !== undefined) {
+        card.classList.toggle('emergency', data.ambulanceDetected);
+        const emergencyIndicator = card.querySelector('.emergency-indicator');
+        if (emergencyIndicator) {
+            emergencyIndicator.style.display = data.ambulanceDetected ? 'block' : 'none';
+        }
+    }
+
     updateTrafficLights(card, data.status);
 }
 
-function updateSignalDisplays() {
-    controller.signals.forEach((data, id) => {
-        updateSignalUI(id, data);
-    });
+function showEmergencyAlert(signalId) {
+    const signal = SIGNALS.find(s => s.id === signalId);
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'emergency-alert';
+    alertDiv.innerHTML = `
+        <div class="alert-content">
+            <strong>⚠️ Emergency Vehicle Detected!</strong>
+            <p>Ambulance detected at ${signal.name}. Adjusting signal timing for priority passage.</p>
+        </div>
+    `;
+    document.body.appendChild(alertDiv);
+    setTimeout(() => alertDiv.remove(), 5000);
 }
 
-function updateTrafficLights(card, status) {
-    const lights = card.querySelectorAll('.light');
-    lights.forEach(light => light.classList.remove('active'));
-
-    if (status === 'Green') {
-        card.querySelector('.light.green').classList.add('active');
-    } else if (status === 'Yellow') {
-        card.querySelector('.light.yellow').classList.add('active');
-    } else if (status === 'Red') {
-        card.querySelector('.light.red').classList.add('active');
-    }
-}
-
-// Simulation Control
-function toggleSimulation() {
-    const startButton = document.getElementById('startSimulation');
-    isSimulationRunning = !isSimulationRunning;
-    
-    if (isSimulationRunning) {
-        startButton.textContent = 'Stop Simulation';
-        startSimulation();
-    } else {
-        startButton.textContent = 'Start Simulation';
-        stopSimulation();
-    }
-}
-
-function startSimulation() {
-    currentSignalIndex = 0;
-    runSignalCycle();
-}
-
-function stopSimulation() {
-    clearInterval(simulationInterval);
-    clearTimeout(currentTimer);
-    
-    controller.signals.forEach((_, id) => {
-        controller.updateSignal(id, { status: 'Waiting' });
-    });
-    
-    updateSignalDisplays();
-}
-
+// Simulation Logic
 function runSignalCycle() {
     const signalIds = Array.from(controller.signals.keys());
     
     function updateCycle() {
         const currentId = signalIds[currentSignalIndex];
         const currentSignal = controller.getSignal(currentId);
+        
+        // If ambulance detected, give priority
+        if (currentSignal.ambulanceDetected) {
+            controller.emergencyMode = true;
+            currentSignal.timing = Math.max(45, currentSignal.timing);
+        }
         
         // Reset all signals to red
         signalIds.forEach(id => {
@@ -263,6 +279,8 @@ function runSignalCycle() {
         controller.updateSignal(currentId, { status: 'Green' });
         updateSignalDisplays();
         
+        const cycleTime = controller.emergencyMode ? 45000 : currentSignal.timing * 1000;
+        
         // Schedule yellow light
         currentTimer = setTimeout(() => {
             controller.updateSignal(currentId, { status: 'Yellow' });
@@ -272,24 +290,49 @@ function runSignalCycle() {
             currentTimer = setTimeout(() => {
                 currentSignalIndex = (currentSignalIndex + 1) % signalIds.length;
                 if (isSimulationRunning) {
+                    // Check if next signal has ambulance
+                    const nextSignal = controller.getSignal(signalIds[currentSignalIndex]);
+                    if (nextSignal.ambulanceDetected) {
+                        showEmergencyAlert(signalIds[currentSignalIndex]);
+                    }
                     updateCycle();
                 }
             }, 3000); // Yellow light duration
-        }, (currentSignal.timing * 1000) - 3000);
+        }, cycleTime - 3000);
     }
     
     updateCycle();
 }
 
-// Utility Functions
-function calculateTiming(vehicleCount, totalVehicles, totalTime) {
-    if (totalVehicles === 0) return Math.round(totalTime / 4);
-    const minTime = 15; // Minimum green light time
-    const calculatedTime = Math.round((vehicleCount / totalVehicles) * totalTime);
-    return Math.max(minTime, calculatedTime);
+// Add to your CSS (styles.css)
+`.emergency-alert {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #ff4444;
+    color: white;
+    padding: 15px;
+    border-radius: 5px;
+    z-index: 1000;
+    animation: slideIn 0.5s ease-out;
 }
 
-function showError(message) {
-    // You can implement your preferred error display method here
-    alert(message);
+.emergency-indicator {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: #ff4444;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 3px;
+    font-size: 12px;
+    display: none;
 }
+
+@keyframes slideIn {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+}`
+
+// Initialize the application
+document.addEventListener('DOMContentLoaded', initializeApp);
