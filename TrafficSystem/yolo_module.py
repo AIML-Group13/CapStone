@@ -39,15 +39,20 @@ def ambulance_detection(img_path):
     latest_exp = sorted(Path('../yolov5/runs/detect').glob('exp*'), key=os.path.getmtime)[-1]
     # filenames = [f for f in os.listdir(latest_exp) if f.endswith(('.jpeg', '.jpg'))][0]
     filenames = [f for f in os.listdir(latest_exp) if f.endswith('.csv')]
-    count = vehicle_count(f"{latest_exp}/{filenames[0]}", 'Image')
-    # print(filenames)
-    # return f"{latest_exp}/{filenames}"
-    if count>0:
-        print("Ambulance Detected")
-        return True
-    else:
+    if len(filenames)==0:
         print("No Ambulance Detected")
-        return False
+        return 0,None
+    
+    count = vehicle_count(f"{latest_exp}/{filenames[0]}", 'Image')
+    ambulance_detect_vehicle_file = [f for f in os.listdir(latest_exp) if f.endswith(('.jpeg', '.jpg'))][0]
+    print("Ambulance detect_vehicle_count",ambulance_detect_vehicle_file,count)
+    return count,f"{latest_exp}/{ambulance_detect_vehicle_file}"
+    # if count>0:
+    #     print("Ambulance Detected")
+    #     return True
+    # else:
+    #     print("No Ambulance Detected")
+    #     return False
 
 
 def detect_vehicles_and_ambulance(image_path):
@@ -57,8 +62,8 @@ def detect_vehicles_and_ambulance(image_path):
     Returns tuple of (vehicle_count, ambulance_detected)
     """
     vehicle_count,detect_vehicle_file = num_vehicles(image_path)
-    ambulance_detected = ambulance_detection(image_path)
-    return vehicle_count,detect_vehicle_file, ambulance_detected
+    ambulance_detected,ambulance_detect_vehicle_file = ambulance_detection(image_path)
+    return vehicle_count,detect_vehicle_file, ambulance_detected,ambulance_detect_vehicle_file
 
 if __name__ == "__main__":
     print(detect_vehicles_and_ambulance("./uploads/signal_1_20250118_040041.jpg"))
