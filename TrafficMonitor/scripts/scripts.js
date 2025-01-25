@@ -40,6 +40,24 @@ function toggleSimulation() {
         stopSimulation();
     }
 }
+
+
+function startSimulation() {
+    currentSignalIndex = 0;
+    runSignalCycle();
+}
+
+function stopSimulation() {
+    clearInterval(simulationInterval);
+    clearTimeout(currentTimer);
+    
+    controller.signals.forEach((_, id) => {
+        controller.updateSignal(id, { status: 'Waiting' });
+    });
+    
+    updateSignalDisplays();
+}
+
 // State management
 class SignalController {
     constructor() {
@@ -101,7 +119,7 @@ function createSignalCards() {
             vehicleCount: 0,
             timing: 0,
             status: 'Waiting',
-            ambulanceDetected: false
+            ambulanceDetected: 0
         });
         
         signalGrid.appendChild(card);
@@ -150,17 +168,19 @@ async function handleImageUpload(event, signalId) {
         });
         
         const data = await response.json();
+
+        console.log(data);
         
         updateSignalUI(signalId, {
             vehicleCount: data.vehicle_count,
-            ambulanceDetected: data.ambulance_detected,
+            ambulanceDetected: data.ambulance_count,
             // image: URL.createObjectURL(file)
             image: data.image_url
         });
         
         controller.updateSignal(signalId, {
             vehicleCount: data.vehicle_count,
-            ambulanceDetected: data.ambulance_detected
+            ambulanceDetected: data.ambulance_count
         });
         
         await updateTimings();
@@ -179,7 +199,7 @@ async function updateTimings() {
     const timings = Array.from(controller.signals.entries()).map(([id, data]) => ({
         signal_id: id,
         vehicle_count: data.vehicleCount,
-        ambulance_detected: data.ambulanceDetected,
+        ambulance_detected: data.ambulance_count,
         timing: data.timing // Will be calculated on backend
     }));
 
@@ -221,6 +241,10 @@ function updateSignalUI(signalId, data) {
 
     if (data.vehicleCount !== undefined) {
         card.querySelector('.vehicle-count').textContent = data.vehicleCount;
+    }
+
+    if (data.ambulanceDetected !== undefined) {
+        card.querySelector('.ambulance-count').textContent = data.ambulanceDetected;
     }
 
     if (data.timing !== undefined) {
@@ -303,6 +327,7 @@ function runSignalCycle() {
     
     updateCycle();
 }
+
 
 // Add to your CSS (styles.css)
 `.emergency-alert {
