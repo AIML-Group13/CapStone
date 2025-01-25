@@ -45,7 +45,7 @@ class SignalTiming(BaseModel):
     signal_id: int
     timing: int
     vehicle_count: int
-    ambulance_detected: bool
+    # ambulance_count: int
 
 class SignalUpdate(BaseModel):
     timings: List[SignalTiming]
@@ -53,11 +53,12 @@ class SignalUpdate(BaseModel):
 
 # Store signal data in memory (in production, use a database)
 signals = {
-    1: {"name": "North Signal", "vehicle_count": 0, "timing": 0, "ambulance_detected": False, "image_path": None},
-    2: {"name": "South Signal", "vehicle_count": 0, "timing": 0, "ambulance_detected": False, "image_path": None},
-    3: {"name": "East Signal", "vehicle_count": 0, "timing": 0, "ambulance_detected": False, "image_path": None},
-    4: {"name": "West Signal", "vehicle_count": 0, "timing": 0, "ambulance_detected": False, "image_path": None},
+    1: {"name": "North Signal", "vehicle_count": 0, "timing": 0, "image_path": None, "ambulance_count": 0},
+    2: {"name": "South Signal", "vehicle_count": 0, "timing": 0, "image_path": None, "ambulance_count": 0},
+    3: {"name": "East Signal", "vehicle_count": 0, "timing": 0, "image_path": None, "ambulance_count": 0},
+    4: {"name": "West Signal", "vehicle_count": 0, "timing": 0, "image_path": None, "ambulance_count": 0},
 }
+
 
 # Create uploads directory if it doesn't exist
 if not os.path.exists("uploads"):
@@ -106,18 +107,18 @@ async def upload_image(signal_id: int, file: UploadFile = File(...)):
         file_object.write(file.file.read())
     
     vehicle_count, detect_vehicle_file = num_vehicles(file_location)
-    ambulance_detected = ambulance_detection(file_location)
+    ambulance_count,ambulance_detect_vehicle_file = ambulance_detection(file_location)
     
     signals[signal_id].update({
         "vehicle_count": vehicle_count,
-        "ambulance_detected": ambulance_detected,
-        "image_path": detect_vehicle_file
+        "ambulance_count": ambulance_count,
+        "image_path": ambulance_detect_vehicle_file if ambulance_count > 0 else detect_vehicle_file
     })
     
     return {
         "signal_id": signal_id,
         "vehicle_count": vehicle_count,
-        "ambulance_detected": ambulance_detected,
+        "ambulance_count": ambulance_count,
         "message": "Image uploaded and processed successfully",
         "image_url": f"/get-image/{signal_id}?t={int(time.time())}"  # Add timestamp to force refresh
     }
@@ -131,36 +132,40 @@ async def get_image(signal_id: int):
 
 @app.post("/update-timings")
 async def update_timings(update: SignalUpdate):
-    # Check for ambulances first
-    ambulance_signals = []
-    for timing in update.timings:
-        signal_id = timing.signal_id
-        if signal_id in signals:
-            if signals[signal_id]["ambulance_detected"]:
-                ambulance_signals.append(signal_id)
-    
-    remaining_time = update.total_time
-    processed_signals = set()
-    
-    # Handle ambulance signals first
-    if ambulance_signals:
-        priority_time = max(45, update.total_time // len(ambulance_signals))
-        for signal_id in ambulance_signals:
-            signals[signal_id]["timing"] = priority_time
-            processed_signals.add(signal_id)
-            remaining_time -= priority_time
-    
-    # Distribute remaining time among other signals
-    remaining_signals = [t.signal_id for t in update.timings if t.signal_id not in processed_signals]
-    if remaining_signals:
-        time_per_signal = max(15, remaining_time // len(remaining_signals))
-        for signal_id in remaining_signals:
-            signals[signal_id]["timing"] = time_per_signal
-    
-    return {
-        "message": "Timings updated successfully",
-        "ambulance_priority": len(ambulance_signals) > 0
-    }
+    try:
+        # Check for ambulances first
+        ambulance_signals = []
+        for timing in update.timings:
+            signal_id = timing.signal_id
+            if signal_id in signals:
+                if signals[signal_id]["ambulance_count"] > 0:
+                    ambulance_signals.append(signal_id)
+        
+        remaining_time = update.total_time
+        processed_signals = set()
+        
+        # Handle ambulance signals first
+        if ambulance_signals:
+            priority_time = max(45, update.total_time // len(ambulance_signals))
+            for signal_id in ambulance_signals:
+                signals[signal_id]["timing"] = priority_time
+                processed_signals.add(signal_id)
+                remaining_time -= priority_time
+        
+        # Distribute remaining time among other signals
+        remaining_signals = [t.signal_id for t in update.timings if t.signal_id not in processed_signals]
+        if remaining_signals:
+            time_per_signal = max(15, remaining_time // len(remaining_signals))
+            for signal_id in remaining_signals:
+                signals[signal_id]["timing"] = time_per_signal
+        
+        return {
+            "message": "Timings updated successfully",
+            "ambulance_priority": len(ambulance_signals) > 0
+        }
+    except Exception as e:
+        logger.error(f"Error updating timings: {e}")
+        raise HTTPException(status_code=500, detail="An error occurred while updating timings")
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
