@@ -1,0 +1,27 @@
+Installing VSCode.  
+
+Installing Google Cloud CLI 
+
+Installing Docker Desktop 
+
+Setting up files in VSCode 
+
+Setting up the DockerFile 
+
+Building the image locally with the correct infrastructure I.e. amd64 
+
+Uploading the image to GCR.  
+
+Deploying the GCR image to Google Cloud Run via command line.  
+
+
+gcloud config set project sound-helper-448209-a0 
+gcloud auth configure-docker 
+docker tag gradio-app gcr.io/sound-helper-448209-a0/gradio-app 
+
+#Build the image locally with the correct infrastructure I.e. amd64 
+docker build --platform linux/amd64 -t gcr.io/sound-helper-448209-a0/gradio-app:latest . 
+#Uploading the image to GCR. 
+docker push gcr.io/sound-helper-448209-a0/gradio-app 
+#Deploying the GCR image to Google Cloud Run via command line. 
+gcloud run deploy gradio-app --image gcr.io/sound-helper-448209-a0/gradio-app:latest  --platform managed --region asia-south1 --memory 4Gi --cpu 2 --timeout 3000s --port 8080 --allow-unauthenticated
