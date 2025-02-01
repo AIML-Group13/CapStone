@@ -10,16 +10,16 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy app files into the container
-COPY requirements.txt TrafficSystem/main.py /app/ 
+COPY ..
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Set the environment variable (Cloud Run uses this to configure the port)
-ENV PORT=8080
+ENV PORT=8000
 
 # Expose the port that Gradio will run on
-EXPOSE 8080
+EXPOSE 8000
 
 # Command to run the app
 CMD ["python", "main.py"]
