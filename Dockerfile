@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy app files into the container
-COPY best-model.torchscript requirements.txt app.py /app/ 
+COPY requirements.txt TrafficSystem/main.py /app/ 
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
@@ -22,4 +22,4 @@ ENV PORT=8080
 EXPOSE 8080
 
 # Command to run the app
-CMD ["python", "app.py"]
+CMD ["python", "main.py"]
