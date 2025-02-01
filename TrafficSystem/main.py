@@ -1,5 +1,5 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi import APIRouter, Request, Form
+from fastapi import APIRouter, Request, Form    
 from fastapi.responses import HTMLResponse, RedirectResponse,FileResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,7 +10,7 @@ import numpy as np
 import base64
 from datetime import datetime
 import uvicorn
-import os
+import os,subprocess
 import time
 
 import logging
@@ -152,12 +152,16 @@ async def update_timings(update: SignalUpdate):
                 processed_signals.add(signal_id)
                 remaining_time -= priority_time
         
-        # Distribute remaining time among other signals
-        remaining_signals = [t.signal_id for t in update.timings if t.signal_id not in processed_signals]
-        if remaining_signals:
-            time_per_signal = max(15, remaining_time // len(remaining_signals))
-            for signal_id in remaining_signals:
-                signals[signal_id]["timing"] = time_per_signal
+        # Allocate remaining time based on vehicle count
+        remaining_signals = [t for t in update.timings if t.signal_id not in processed_signals]
+        total_vehicle_count = sum(t.vehicle_count for t in remaining_signals)
+        
+        if total_vehicle_count > 0:
+            for timing in remaining_signals:
+                signal_id = timing.signal_id
+                vehicle_count = timing.vehicle_count
+                allocated_time = int(vehicle_count * remaining_time / total_vehicle_count)
+                signals[signal_id]["timing"] = allocated_time
         
         return {
             "message": "Timings updated successfully",
@@ -167,5 +171,32 @@ async def update_timings(update: SignalUpdate):
         logger.error(f"Error updating timings: {e}")
         raise HTTPException(status_code=500, detail="An error occurred while updating timings")
 
+def clone_and_setup_yolov5():
+    try:
+        # Clone the repository
+        subprocess.run(["git", "clone", "https://github.com/ultralytics/yolov5"], check=True)
+        
+        # Change directory to yolov5
+        os.chdir("yolov5")
+        
+        # Install requirements
+        subprocess.run(["pip", "install", "-qr", "requirements.txt"], check=True)
+        subprocess.run(["pip", "install", "comet_ml"], check=True)
+        
+        print("YOLOv5 setup completed successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"An error occurred while setting up YOLOv5: {e}")
+    finally:
+        # Change back to the original directory
+        os.chdir("..")
+
 if __name__ == "__main__":
+    os.chdir("..")
+    #remove existing yolov5 directory
+    os.system("rm -rf yolov5")
+    clone_and_setup_yolov5()
+    #cp detec.py file from TrafficSystem to yolov5
+    os.system("cp TrafficSystem/detect.py yolov5")
+    os.chdir("TrafficSystem")
+    # Start the FastAPI app
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
