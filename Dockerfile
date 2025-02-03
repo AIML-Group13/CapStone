@@ -12,7 +12,6 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
     
-#RUN git clone https://github.com/ultralytics/yolov5
 # Copy the requirements file into the container
 COPY requirements.txt .
 COPY ./yolov5/requirements.txt ./yolov5/requirements.txt
