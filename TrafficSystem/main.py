@@ -191,12 +191,12 @@ def clone_and_setup_yolov5():
         os.chdir("..")
 
 if __name__ == "__main__":
-    os.chdir("..")
-    #remove existing yolov5 directory
-    os.system("rm -rf yolov5")
-    clone_and_setup_yolov5()
-    #cp detec.py file from TrafficSystem to yolov5
-    os.system("cp TrafficSystem/detect.py yolov5")
-    os.chdir("TrafficSystem")
+    # os.chdir("..")
+    # #remove existing yolov5 directory
+    # os.system("rm -rf yolov5")
+    # clone_and_setup_yolov5()
+    # #cp detec.py file from TrafficSystem to yolov5
+    # os.system("cp TrafficSystem/detect.py yolov5")
+    # os.chdir("TrafficSystem")
     # Start the FastAPI app
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
