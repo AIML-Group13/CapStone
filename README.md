@@ -23,4 +23,13 @@
     ```sh
    cd TrafficSystem
     python main.py
+    
+## Docker execution
+git clone https://github.com/AIML-Group13/CapStone.git
+cd CapStone
+git clone https://github.com/ultralytics/yolov5
+docker build -t testapp .
+docker run -p 8000:8000 testapp
+
+
 
