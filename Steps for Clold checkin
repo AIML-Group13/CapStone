@@ -15,13 +15,17 @@ Uploading the image to GCR.
 Deploying the GCR image to Google Cloud Run via command line.  
 
 
-gcloud config set project sound-helper-448209-a0 
+gcloud config set project traffic-system-123
 gcloud auth configure-docker 
-docker tag gradio-app gcr.io/sound-helper-448209-a0/gradio-app 
+docker tag traffic-app gcr.io/traffic-system-123/traffic-app:latest
 
 #Build the image locally with the correct infrastructure I.e. amd64 
-docker build --platform linux/amd64 -t gcr.io/sound-helper-448209-a0/gradio-app:latest . 
+docker build --platform linux/amd64 -t gcr.io/traffic-system-123/traffic-app:latest .
+
+gcloud services enable containerregistry.googleapis.com
+
 #Uploading the image to GCR. 
-docker push gcr.io/sound-helper-448209-a0/gradio-app 
+docker push gcr.io/gcr.io/traffic-system-123/traffic-app:latest 
+
 #Deploying the GCR image to Google Cloud Run via command line. 
-gcloud run deploy gradio-app --image gcr.io/sound-helper-448209-a0/gradio-app:latest  --platform managed --region asia-south1 --memory 4Gi --cpu 2 --timeout 3000s --port 8080 --allow-unauthenticated
+gcloud run deploy traffic-app --image gcr.io/traffic-system-123/traffic-app:latest  --platform managed --region asia-south1 --memory 4Gi --cpu 2 --timeout 3000s --port 8051 --allow-unauthenticated
