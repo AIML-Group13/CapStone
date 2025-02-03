@@ -30,4 +30,4 @@ ENV PORT=8000
 EXPOSE 8000
 
 # Run the FastAPI app
-CMD ["sh", "-c", "cd TrafficSystem && python main2.py"]
+CMD ["sh", "-c", "cd TrafficSystem && python main.py"]
