@@ -1,5 +1,5 @@
 // Configuration
-const API_URL = 'http://localhost:8000';
+const API_URL = 'http://pov-automation:8051';
 const SIGNALS = [
     { id: 1, name: 'North Signal' },
     { id: 2, name: 'South Signal' },
@@ -283,47 +283,51 @@ function showEmergencyAlert(signalId) {
 // Simulation Logic
 function runSignalCycle() {
     const signalIds = Array.from(controller.signals.keys());
-    
+    let currentSignalIndex = 0;
+    let currentTimer = null;
+
     function updateCycle() {
         const currentId = signalIds[currentSignalIndex];
         const currentSignal = controller.getSignal(currentId);
-        
+
         // If ambulance detected, give priority
         if (currentSignal.ambulanceDetected) {
             controller.emergencyMode = true;
-            currentSignal.timing = Math.max(45, currentSignal.timing);
+            currentSignal.timing = 120; // Give 120 seconds to the signal with an emergency vehicle
+        } else {
+            controller.emergencyMode = false;
         }
-        
+
         // Reset all signals to red
         signalIds.forEach(id => {
             controller.updateSignal(id, { status: 'Red' });
         });
-        
-        // Set current signal to green
-        controller.updateSignal(currentId, { status: 'Green' });
-        updateSignalDisplays();
-        
-        const cycleTime = controller.emergencyMode ? 45000 : currentSignal.timing * 1000;
-        
-        // Schedule yellow light
-        currentTimer = setTimeout(() => {
-            controller.updateSignal(currentId, { status: 'Yellow' });
+
+        // Set current signal to green if timing is greater than 0
+        if (currentSignal.timing > 0) {
+            controller.updateSignal(currentId, { status: 'Green' });
             updateSignalDisplays();
-            
-            // Schedule next signal
+
+            const cycleTime = controller.emergencyMode ? 120000 : currentSignal.timing * 1000;
+
+            // Schedule yellow light
             currentTimer = setTimeout(() => {
-                currentSignalIndex = (currentSignalIndex + 1) % signalIds.length;
-                if (isSimulationRunning) {
-                    // Check if next signal has ambulance
-                    const nextSignal = controller.getSignal(signalIds[currentSignalIndex]);
-                    if (nextSignal.ambulanceDetected) {
-                        showEmergencyAlert(signalIds[currentSignalIndex]);
-                    }
+                controller.updateSignal(currentId, { status: 'Yellow' });
+                updateSignalDisplays();
+
+                // Schedule next signal
+                currentTimer = setTimeout(() => {
+                    currentSignalIndex = (currentSignalIndex + 1) % signalIds.length;
                     updateCycle();
-                }
-            }, 3000); // Yellow light duration
-        }, cycleTime - 3000);
+                }, 1000); // Yellow light duration
+            }, cycleTime - 1000); // Subtract yellow light duration from cycle time
+        } else {
+            // If timing is 0, move to the next signal immediately
+            currentSignalIndex = (currentSignalIndex + 1) % signalIds.length;
+            updateCycle();
+        }
     }
+
     
     updateCycle();
 }
