@@ -1,5 +1,5 @@
 // Configuration
-const API_URL = 'http://localhost:8000';
+const API_URL = 'https://testapp-new-1022046302120.us-east1.run.app';
 const SIGNALS = [
     { id: 1, name: 'North Signal' },
     { id: 2, name: 'South Signal' },
