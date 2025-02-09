@@ -1,5 +1,5 @@
 // Configuration
-const API_URL = 'http://localhost:8000';
+const API_URL = window.location.origin
 const SIGNALS = [
     { id: 1, name: 'North Signal' },
     { id: 2, name: 'South Signal' },
