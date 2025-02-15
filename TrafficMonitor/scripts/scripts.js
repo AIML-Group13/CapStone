@@ -13,6 +13,18 @@ function updateSignalDisplays() {
     });
 }
 
+function loginUser() {
+
+    if (localStorage.getItem('username')) return;
+
+    const username = prompt("Enter your username");
+    if (username === null || username === "") {
+        loginUser();
+        return;
+    }
+    localStorage.setItem('username', username);
+}
+
 function updateTrafficLights(card, status) {
     const lights = card.querySelectorAll('.light');
     lights.forEach(light => light.classList.remove('active'));
@@ -95,6 +107,7 @@ let currentTimer;
 
 // Initialize application
 function initializeApp() {
+    loginUser();
     createSignalCards();
     setupEventListeners();
     fetchInitialData();
@@ -160,6 +173,7 @@ async function handleImageUpload(event, signalId) {
 
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('username', localStorage.getItem('username'));
 
     try {
         const response = await fetch(`${API_URL}/upload-image/${signalId}`, {
