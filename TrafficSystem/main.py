@@ -101,8 +101,10 @@ async def get_signals():
     return signals
 
 @app.post("/upload-image/{signal_id}")
-async def upload_image(signal_id: int, file: UploadFile = File(...)):
-    file_location = f"uploads/{file.filename}"
+async def upload_image(signal_id: int,username: str = Form(...), file: UploadFile = File(...)):
+    logger.info(f"User {username} is uploading an image for signal {signal_id}")
+    os.system(f"mkdir -p uploads/{username}")
+    file_location = f"uploads/{username}/{file.filename}"
     with open(file_location, "wb+") as file_object:
         file_object.write(file.file.read())
     
